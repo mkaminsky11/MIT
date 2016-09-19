@@ -1,0 +1,58 @@
+body, html{
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
+	overflow: auto;
+}
+
+#main{
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+#controls{
+	width: 100%;
+}
+
+#pdf-cont{
+	flex: 1;
+	width: 100%;
+	position: relative;
+}
+
+#canvas{
+	width: 100%;
+	height: 100%;
+	z-index: 1;
+}
+
+#svg{
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+#info{
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	width: 150px;
+	padding: 10px;
+	border: solid 1px #eee;
+	background-color: white;
+	z-index: 4;
+}
+
+#info > *{
+	flex: 1;
+	width: 100%;
+	margin-bottom: 5px;
+}
