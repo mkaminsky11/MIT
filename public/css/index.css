@@ -33,11 +33,11 @@ body, html{
 
 #svg{
 	z-index: 1;
-	width: 100%;
-	height: 100%;
 	position: absolute;
 	top: 0;
 	left: 0;
+	right: 0;
+	width: 100%;
 }
 
 #info{
@@ -55,4 +55,37 @@ body, html{
 	flex: 1;
 	width: 100%;
 	margin-bottom: 5px;
+}
+
+i{
+	font-size: 12px !important;
+}
+
+#data-lines, #data-points{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+}
+
+#data-lines{
+	z-index: 2;
+}
+
+#data-points{
+	z-index: 3;
+}
+
+
+/*
+SVG
+*/
+
+.node{
+	z-index: 2;
+}
+
+.line-node{
+	z-index: 4;
 }
