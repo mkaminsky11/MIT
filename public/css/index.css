@@ -1,91 +1,16 @@
-body, html{
-	width: 100%;
-	height: 100%;
-	margin: 0;
-	position: absolute;
-	top: 0;
-	left: 0;
-	overflow: auto;
-}
-
-#main{
-	width: 100%;
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-}
-
-#controls{
-	width: 100%;
-}
-
-#pdf-cont{
-	flex: 1;
+canvas{
 	width: 100%;
 	position: relative;
 }
-
-#canvas{
+svg{
 	width: 100%;
-	height: 100%;
-	z-index: 1;
-}
-
-#svg{
-	z-index: 1;
 	position: absolute;
 	top: 0;
 	left: 0;
-	right: 0;
-	width: 100%;
-}
-
-#info{
-	position: absolute;
-	display: flex;
-	flex-direction: column;
-	width: 150px;
-	padding: 10px;
-	border: solid 1px #eee;
-	background-color: white;
-	z-index: 4;
-}
-
-#info > *{
-	flex: 1;
-	width: 100%;
-	margin-bottom: 5px;
-}
-
-i{
-	font-size: 12px !important;
-}
-
-#data-lines, #data-points{
-	position: absolute;
-	width: 100%;
 	height: 100%;
-	top: 0;
-	left: 0;
-}
-
-#data-lines{
 	z-index: 2;
 }
-
-#data-points{
-	z-index: 3;
-}
-
-
-/*
-SVG
-*/
-
-.node{
-	z-index: 2;
-}
-
-.line-node{
-	z-index: 4;
+#pdf-cont > div{
+	position: relative;
+	width: 100%;
 }

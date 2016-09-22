@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block body %}
+<link rel="stylesheet" href="/css/editor.css">
+<div id="main">
+	<div id="controls">
+		<select id="buildings">
+			{% for building in buildings %}
+				<option value="{{buiding.number}}" data-floors="{{ building.floors }}">{{building.number}}</option>
+			{% endfor %}
+		</select>
+		<select id="floors">
+		</select>
+		<button onclick="loadFloor()">LOAD</button>
+		<button onclick="tool.select.start()"><i class="fa fa-hand-pointer-o" aria-hidden="true"></i></button>
+		<button onclick="tool.node.type='room';tool.node.start()"><i class="fa fa-map-marker" aria-hidden="true"></i></button>
+		<button onclick="tool.node.type='stairs';tool.node.start()">stairs</button>
+		<button onclick="tool.node.type='elevator';tool.node.start()">elevator</button>
+		<button onclick="tool.eraser.start()"><i class="fa fa-eraser" aria-hidden="true"></i></button>
+		<button onclick="tool.line.start()"><i class="material-icons">timeline</i></button>
+		<button onclick="save()">SAVE</button>
+	</div>
+	<div id="pdf-cont">
+		<canvas id="canvas"></canvas>
+
+		<div id="info" style="display:none">
+			<input id="name" placeholder="Name">
+			<select id="type">
+				<option value="room" selected>Room</option>
+				<option value="exit">Exit</option>
+				<option value="stairs">Stairs</option>
+				<option value="elevator">Elevator</option>
+			</select>
+			<button onclick="saveSelect()">SAVE</button>
+			<button onclick="closeSelect()">CLOSE</button>
+		</div>
+
+
+		<svg id="svg">
+			<circle cx="860" class="node-hover" cy="208" r="5" style="fill: green;display:none"></circle>
+			<line x1="0" y1="0" x2="0" y2="0" stroke-width="3" stroke="green" style="display:none" class="line-hover"></line>
+			<g id="data-lines"></g>
+			<g id="data-points"></g>
+			<g id="data-result"></g>
+		</svg>
+	</div>
+</div>
+
+<script src="/pdf/build/pdf.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.4/d3.min.js"></script>
+<script src="/js/editor.js"></script>
+{% endblock %}

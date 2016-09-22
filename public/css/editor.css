@@ -1,0 +1,79 @@
+#main{
+	width: 100%;
+	height: 100%;
+	display: block;
+	flex-direction: column;
+}
+
+/*
+SVG
+*/
+
+.node{
+	z-index: 2;
+}
+
+.line-node{
+	z-index: 4;
+}
+
+i{
+	font-size: 12px !important;
+}
+
+#pdf-cont{
+	flex: 1;
+	width: 100%;
+	position: relative;
+}
+
+#canvas{
+	width: 100%;
+	z-index: 1;
+}
+
+#svg{
+	z-index: 1;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#info{
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	width: 150px;
+	padding: 10px;
+	border: solid 1px #eee;
+	background-color: white;
+	z-index: 4;
+}
+
+#info > *{
+	flex: 1;
+	width: 100%;
+	margin-bottom: 5px;
+}
+
+#data-lines, #data-points, #data-result{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+}
+
+#data-lines{
+	z-index: 2;
+}
+
+#data-points{
+	z-index: 3;
+}
+
+#data-result{
+	z-index: 4;
+}
