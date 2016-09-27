@@ -98,18 +98,35 @@ function search(){
 	  success: function(data){
 	  	console.log(data);
 	  	if(!data.err){
-	  		for(var i = 0; i < data.path.length; i++){
+	  		/*for(var i = 0; i < data.path.length; i++){
 	  			var floorId = data.path[i].id.split("_").slice(0,2).join("_");
 	  			var svg = floors[floorId].svg;
+	  			data.path[i].data = denormalize(data.path[i].data,svg);
 	  			if(data.path[i].type === "line"){
-	  				createNode(data.path[i].x1, data.path[i].y1, "red", svg);
-	  				createNode(data.path[i].x2, data.path[i].y2, "red", svg);
-	  				createLine(data.path[i].x1, data.path[i].y1, data.path[i].x2, data.path[i].y2, "red", svg);
+	  				createNode(data.path[i].data.x1, data.path[i].data.y1, "red", svg);
+	  				createNode(data.path[i].data.x2, data.path[i].data.y2, "red", svg);
+	  				createLine(data.path[i].data.x1, data.path[i].data.y1, data.path[i].data.x2, data.path[i].data.y2, "red", svg);
 	  			}
-	  			else if(data.path[i].type === "none"){
-	  				createNode(data.path[i].x, data.path[i].y, "red", svg);
+	  			else if(data.path[i].type === "node"){
+	  				createNode(data.path[i].data.x, data.path[i].data.y, "red", svg);
 	  			}
-	  		}
+	  		}*/
+	  		var svg = floors[data.connected[0].building+"_"+data.connected[0].floor].svg;
+	  		data.connected[0] = denormalize(data.connected[0],svg);
+	  		createNode(data.connected[0].x,data.connected[0].y, "red", svg);
+  			for(var i = 1; i < data.connected.length; i++){
+  				var svg = floors[data.connected[i].building+"_"+data.connected[i].floor].svg;
+  				console.log(svg);
+  				data.connected[i] = denormalize(data.connected[i],svg);
+  				if(data.connected[i].x === data.connected[i-1].x && data.connected[i].y === data.connected[i-1].y){
+  					//same thing....
+  				}
+  				else{
+  					createNode(data.connected[i].x,data.connected[i].y,"red",svg);
+  					createNode(data.connected[i-1].x,data.connected[i-1].y,"red",svg);
+  					createLine(data.connected[i-1].x,data.connected[i-1].y, data.connected[i].x, data.connected[i].y, "red", svg);
+  				}
+  			}
 	  	}
 	  },
 	  error: function(e){
@@ -118,16 +135,27 @@ function search(){
 	});
 }
 
+function clear(){
+	$("svg").html("");
+}
+
+function denormalize(obj,svg){
+	for(key in obj){
+		if(key.charAt(0) === "x"){
+			obj[key] = (obj[key] * Number($(svg).attr("width")) / 1000);
+		}
+		else if(key.charAt(0) === "y"){
+			obj[key] = (obj[key] * Number($(svg).attr("height")) / 1000);
+		}
+	}
+	return obj;
+}
+
+
 function createNode(x,y,color,svg){
-	x = x * Number($(svg).attr("width")) / 1000;
-	y = y * Number($(svg).attr("height")) / 1000;
 	d3.select(svg).append("circle").attr("cx", x).attr("cy", y).attr("r", 5).style("fill", color);
 }
 
 function createLine(x1,y1,x2,y2,color,svg){
-	x1 = x1 * Number($(svg).attr("width")) / 1000;
-	y1 = y1 * Number($(svg).attr("height")) / 1000;
-	x2 = x2 * Number($(svg).attr("width")) / 1000;
-	y2 = y2 * Number($(svg).attr("height")) / 1000;
 	d3.select(svg).append("line").attr("x2", x2).attr("y2", y2).attr("x1",x1).attr("y1",y1).attr("stroke-width",3).attr("stroke",color);
 }

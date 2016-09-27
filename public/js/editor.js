@@ -4,7 +4,9 @@ var floor = 0;
 var canvas = document.getElementById('canvas');
 var context = canvas.getContext('2d');
 var svg = document.getElementById('svg');
-var pdf_viewport = "";
+var pdf_viewport = null;
+
+var storage = [];
 
 $(document).ready(function(){
 	floors = $("#buildings").find(":selected").attr("data-floors").split(",");
@@ -14,15 +16,12 @@ $(document).ready(function(){
 		$("#floors").append("<option value='" + floors[i] + "'>" + floors[i] + "</option>")
 	}
 	floor = Number($("#floors").find(":selected").text());
-
 	svg.addEventListener('click', function (event) {
 		tool.do(event.offsetX, event.offsetY);
 	}, false);
-	
 	svg.addEventListener('mousemove', function (event) {
 		tool.hover(event.offsetX, event.offsetY);
 	}, false);	
-
 	loadFloor();
 });
 
@@ -58,15 +57,15 @@ function loadFloor(){
 			
 			$(svg).css("height", $(canvas).height());
 			$(svg).css("width", $(canvas).width());
+			$(svg).attr("height", $(canvas).height());
+			$(svg).attr("width", $(canvas).width());
 			svg.setAttribute("viewBox", "0 0 " + $(canvas).width() + " " + $(canvas).width() * ratio);
 
 			var renderContext = {
 			  canvasContext: context,
 			  viewport: scaledViewport
 			};
-
 			page.render(renderContext);
-
 
 			$.ajax({
 			  type: "GET",
@@ -74,31 +73,16 @@ function loadFloor(){
 			  data: {
 			  },
 			  success: function(data){
-			  	var _d = JSON.parse(data);
-			  	items = _d.items || {};
-			  	connections = _d.connections || [];
-			  	for(var i = 0; i < connections.length; i++){
-			  		connections[i]["x"] = connections[i]["x"] * Number($("#svg").attr("width")) / 1000;
-			  		connections[i]["y"] = connections[i]["y"] * Number($("#svg").attr("height")) / 1000;
-			  	}
-			  	for(key in items){
-			  		var item = items[key];
-					for(key2 in item){
-						if(key2.charAt(0) === "x"){
-							items[key][key2] = (items[key][key2] * Number($("#svg").attr("width")) / 1000);
-						}
-						else if(key2.charAt(0) === "y"){
-							items[key][key2] = (items[key][key2] * Number($("#svg").attr("height")) / 1000);
-						}
-					}
-
-					if(item.type === "line"){
-						createLineNode(item.x1, item.y1, item.id);
-						createLine(item.x1, item.y1, item.x2, item.y2, item.id);
-					}
-					else if(item.type === "node"){
-						createNode(item.x, item.y, item.id);
-					}
+			  	var items = data;
+			  	for(var i = 0; i < items.length; i++){
+			  		items[i].data = denormalize(items[i].data);
+			  		if(items[i].type === "line"){
+			  			createLineNode(items[i].data.x1,items[i].data.y1,items[i].id);
+			  			createLine(items[i].data.x1,items[i].data.y1,items[i].data.x2,items[i].data.y2,items[i].id);
+			  		}
+			  		else if(items[i].type === "node"){
+			  			createNode(items[i].data.x,items[i].data.y,items[i].id,items[i].data.node,items[i].data.name)
+			  		}
 			  	}
 			  },
 			  error: function(e){
@@ -109,11 +93,8 @@ function loadFloor(){
 	});
 }
 
-var connections = [];
-var items = {};
-var snap = null;
-var counter = null;
 
+var counter = null;
 var tool = {}
 tool.tool = "select"
 tool.node = {}
@@ -123,7 +104,7 @@ tool.select = {
 tool.line = {
 	start: null
 };
-tool.elevator = {}
+tool.elevator = {} 
 tool.stairs = {}
 tool.eraser = {}
 tool.node.start = function(){
@@ -139,6 +120,7 @@ tool.line.start = function(){
 	tool.reset();
 	$(".node-hover").css("display","block");
 	tool.tool = "line";
+	tool.node.type = "room";
 }
 tool.eraser.start = function(){
 	tool.reset();
@@ -157,29 +139,8 @@ tool.do = function(x,y){
 		x = Number($(".node-hover").attr("cx"));
 		y = Number($(".node-hover").attr("cy"));
 		counter = newId(x,y);
-		createNode(x,y,counter);
-		items["" + counter] = {
-			id: counter,
-			type: "node",
-			name: "",
-			node: "room",
-			x: x,
-			y: y,
-			connected: []
-		};
-		if(snap !== null){
-			connections.push({
-				between: [counter, snap.id],
-				x: x,
-				y: y
-			});
-			if(items[counter].connected.indexOf(snap.id) === -1){
-				items[counter].connected.push(snap.id);
-			}
-			if(items[snap.id].connected.indexOf(counter) === -1){
-				items[snap.id].connected.push(counter);
-			}
-		}
+		createNode(x,y,counter,tool.node.type,"");
+		newNode(x,y,counter, "", tool.node.type);
 	}
 	else if(tool.tool === "line"){
 		x = Number($(".node-hover").attr("cx"));
@@ -190,67 +151,28 @@ tool.do = function(x,y){
 			createLineNode(x,y,counter);
 			$(".line-hover").css("display","block");
 			d3.select(".line-hover").attr("x1", x).attr("y1", y);
-			tool.line.snap = snap;
 		}
 		else{
 			x = Number($(".line-hover").attr("x2"));
 			y = Number($(".line-hover").attr("y2"));
 			createLine(tool.line.first.x,tool.line.first.y,x,y,counter);
-			items["" + counter] = {
-				id: counter,
-				type: "line",
-				x1: tool.line.first.x,
-				y1: tool.line.first.y,
-				x2: x,
-				y2: y,
-				connected: []
-			};
-			if(tool.line.snap !== null){
-				connections.push({
-					between: [counter, tool.line.snap.id],
-					x: tool.line.first.x,
-					y: tool.line.first.y
-				});
-				if(items[counter].connected.indexOf(tool.line.snap.id) === -1){
-					items[counter].connected.push(tool.line.snap.id);
-				}
-				if(items[tool.line.snap.id].connected.indexOf(counter) === -1){
-				items[tool.line.snap.id].connected.push(counter);
-			}
-			}
-			if(snap !== null){
-				connections.push({
-					connected: [],
-					between: [counter, snap.id],
-					x: x,
-					y: y
-				});
-				if(items[counter].connected.indexOf(snap.id) === -1){
-					items[counter].connected.push(snap.id);
-				}
-				if(items[snap.id].connected.indexOf(counter) === -1){
-					items[snap.id].connected.push(counter);
-				}
-			}
+			newLine(tool.line.first.x,tool.line.first.y,x,y,counter);
 			tool.line.first = null;
 			$(".line-hover").css("display","none");
 		}
 	}
 };
 tool.hover = function(x,y){
+	var x_x = x * 1000 / Number($("#svg").attr("width"))
+	var y_y = y * 1000 / Number($("#svg").attr("height"))
 	d3.select(".node-hover").attr("cx", x).attr("cy", y);
 	d3.select(".line-hover").attr("x2", x).attr("y2", y);
-	snap = null;
 	if(tool.tool === "line"){
 		$(".node,.line-node").each(function(i){
 				var d = (pointDistance(this, x, y));
 				if(d.dist <= 12){
 					d3.select(".node-hover").attr("cx", d.x).attr("cy", d.y);
 					d3.select(".line-hover").attr("x2", d.x).attr("y2", d.y);
-
-					snap = {
-						id: $(this).attr("data-id") || $(this).attr("data-for-id")
-					};
 				}
 		});
 	}
@@ -259,14 +181,10 @@ tool.hover = function(x,y){
 		$(".line").each(function(i){
 				var d = (lineDistance(this, x, y));
 				if(d.dist <= 12){
-					var point = closest(d);
+					var point = closest(this, x, y, d.dist);
 					if(point !== null){
 						d3.select(".node-hover").attr("cx", point.x).attr("cy", point.y);
 						d3.select(".line-hover").attr("x2", point.x).attr("y2", point.y);
-
-						snap = {
-							id: $(this).attr("data-id") || $(this).attr("data-for-id")
-						};
 					}
 				}
 		});
@@ -276,10 +194,6 @@ tool.hover = function(x,y){
 				if(d.dist <= 12){
 					d3.select(".node-hover").attr("cx", d.x).attr("cy", d.y);
 					d3.select(".line-hover").attr("x2", d.x).attr("y2", d.y);
-
-					snap = {
-						id: $(this).attr("data-id") || $(this).attr("data-for-id")
-					};
 				}
 		});
 	}
@@ -296,8 +210,24 @@ function pointDistance(point, x0, y0){
 	}
 }
 
-function createNode(x,y,id){
-	d3.select("#data-points").append("circle").attr("cx", x).attr("class","node").attr("data-type","room").attr("cy", y).attr("r", 5).style("fill", "blue").attr("data-id", id);
+function createNode(x,y,id,type,name){
+	storage.push({
+		building: building,
+		floor: floor,
+		type: "node",
+		id: id,
+		data: {
+			x: x,
+			y: y,
+			node: type,
+			name: name
+		}
+	});
+	var color = "blue";
+	if(type === "stairs" || type === "elevator"){
+		color = "yellow";
+	}
+	d3.select("#data-points").append("circle").attr("cx", x).attr("class","node").attr("data-type","room").attr("cy", y).attr("r", 5).style("fill", color).attr("data-id", id);
 	var last_one = $("#svg circle.node").last().get(0);
 	last_one.addEventListener('click', function (event) {
 		if(tool.tool === "select"){
@@ -305,11 +235,17 @@ function createNode(x,y,id){
 			$("#info").css("display","flex");
 			$("#info").css("left", event.offsetX);
 			$("#info").css("top", event.offsetY + 20);
-			$("#info select").val(items[tool.select.id].node);
-			$("#info #name").val(items[tool.select.id].name);
+			for(var i = 0; i < storage.length; i++){
+				if(storage[i].id === tool.select.id){
+					$("#info #type").val(storage[i].data.node);
+					$("#info #name").val(storage[i].data.name);
+				}
+			}
 		}
 		else if(tool.tool === "eraser"){
-			deleteConnections($(this).attr("data-id") || $(this).attr("data-for-id"));
+			var id = $(this).attr("data-id");
+			$("[data-for-id='" + id + "']").remove();
+			deleteObject(id);
 			$(this).remove();
 		}
 	}, false);
@@ -322,15 +258,27 @@ function createNode(x,y,id){
 }
 
 function createLine(x1, y1, x2, y2, id){
+	storage.push({
+		building: building,
+	  	floor: floor,
+	  	type: "line",
+	  	id: id,
+	  	data:{
+		  	x1: x1,
+		  	y1: y1,
+		  	x2: x2,
+		  	y2: y2
+		}
+	});
 	d3.select("#data-lines").append("line").attr("x2", x2).attr("class","line").attr("y2", y2).attr("x1",x1).attr("y1",y1).attr("stroke-width",3).attr("stroke","green").attr("data-id",id);
 	d3.select("#data-lines").append("circle").attr("cx", x2).attr("class","line-node").attr("data-type","line").attr("cy", y2).attr("r", 5).style("fill", "green").attr("data-for-id",id);
 	var last_one = $("#svg line.line").last().get(0);
 	last_one.addEventListener('click', function (event) {
 		if(tool.tool === "eraser"){
 			var id = $(this).attr("data-id");
-			deleteConnections($(this).attr("data-id") || $(this).attr("data-for-id"));
-			$(this).remove();
 			$("[data-for-id='" + id + "']").remove();
+			deleteObject(id);
+			$(this).remove();
 		}
 	}, false);
 }
@@ -344,15 +292,8 @@ function lineDistance(line, x0, y0){
 	var y1 = Number($(line).attr("y1"));
 	var x2 = Number($(line).attr("x2"));
 	var y2 = Number($(line).attr("y2"));
-
 	var slope = (y2 - y1)/(x2 - x1)
-
-	// y = mx + h
-	// h = y - mx
 	var h = y2 - slope * x2;
-
-	// ax + by + c = 0
-	// -mx + y -h = 0
 	var c = -1 * h;
 	var a = -1 * slope;
 	var b = 1
@@ -372,43 +313,26 @@ function lineDistance(line, x0, y0){
 	};
 }
 
-function closest(data){
-	var a = data.a;
-	var b = data.b;
-	var c = data.c;
-	var x1 = data.x1;
-	var y1 = data.y1;
-	var x2 = data.x2;
-	var y2 = data.y2;
-	var x0 = data.x0;
-	var y0 = data.y0;
+function closest(line, x, y, distance){
+	var x1 = Number($(line).attr("x1"));
+	var y1 = Number($(line).attr("y1"));
+	var x2 = Number($(line).attr("x2"));
+	var y2 = Number($(line).attr("y2"));
+	x = Number(x);
+	y = Number(y);
 
-	var x = ( b * (b * x0 - a * y0) - a * c ) / ( Math.pow(a,2) + Math.pow(b,2) );
-	var y = ( a * (-1 * b * x0 + a * y0) - b * c ) / ( Math.pow(a,2) + Math.pow(b,2) );
+	var normal = [-1 * y2 + y1, x2 - x1];
+	var magnitude = Math.sqrt(Math.pow(normal[0],2) + Math.pow(normal[1],2));
+	var ratio = distance / magnitude;
+	normal[0] = normal[0]*ratio;
+	normal[1] = normal[1]*ratio;
 
-	if(x < Math.min(x1,x2) || x > Math.max(x1,x2) || y < Math.min(y1,y2) || y > Math.max(y1,y2)){
-		return null;
-	}
+	var _x = x + normal[0];
+	var _y = y + normal[1];
+
 	return {
-		x: x,
-		y: y
-	};
-}
-
-function deleteConnections(id){
-	var conn = [];
-	for(var i = 0; i < connections.length; i++){
-		if(connections[i].between.indexOf(id) === -1){
-			conn.push(connections[i]);
-		}
-	}
-	connections = conn;
-	delete items["" + id];
-	for(key in items){
-		item = items[key];
-		if(item.connected.indexOf(id) !== -1){
-			item.connected.splice(item.connected.indexOf(id), 1);
-		}
+		x: _x,
+		y: _y
 	}
 }
 
@@ -421,53 +345,6 @@ function getRandomInt(min, max) {
 }
 
 function save(){
-	//normalize everything to 1000px
-	var _items = {};
-	var _connections = [];
-	for(key in items){
-		_items[key] = clone(items[key]);
-		var item = _items[key];
-		for(key2 in item){
-			if(key2.charAt(0) === "x" && typeof item[key2] === "number"){
-				_items[key][key2] = _items[key][key2] * 1000 / Number($("#svg").attr("width"))
-			}
-			else if(key2.charAt(0) === "y" && typeof item[key2] === "number"){
-				_items[key][key2] = _items[key][key2] * 1000 / Number($("#svg").attr("height"))
-			}
-		}
-		/*
-		stored =  svg width
-		______    _________
-
-		normalized  1000px
-
-		normal = stored * 1000 / svg width
-		*/
-
-	}
-
-	for(var i = 0; i < connections.length; i++){
-		_connections.push(clone(connections[i]));
-		_connections[i]["x"] = _connections[i]["x"] * 1000 / Number($("#svg").attr("width"))
-		_connections[i]["y"] = _connections[i]["y"] * 1000 / Number($("#svg").attr("height"))
-	}
-
-	$.ajax({
-	  type: "POST",
-	  url: "/update",
-	  data: {
-	  	building: building,
-	  	floor: floor,
-	  	items: _items,
-	  	connections: _connections
-	  },
-	  success: function(data){
-
-	  },
-	  error: function(e){
-
-	  }
-	});
 }
 
 function clone(obj) {
@@ -481,12 +358,35 @@ function clone(obj) {
 
 function saveSelect(){
 	var id = tool.select.id;
-	items[id].name = $("#info #name").val();
-	items[id].node = $("#info select").val();
+	updateNode(id, $("#info #name").val(), $("#info select").val());
 }
 
 function closeSelect(){
 	$("#info").css("display","none");
+}
+
+function normalize(obj){
+	for(key in obj){
+		if(key.charAt(0) === "x"){
+			obj[key] = obj[key]* 1000 / Number($("#svg").attr("width"))
+		}
+		else if(key.charAt(0) === "y"){
+			obj[key] = obj[key] * 1000 / Number($("#svg").attr("height"))
+		}
+	}
+	return obj;
+}
+
+function denormalize(obj){
+	for(key in obj){
+		if(key.charAt(0) === "x"){
+			obj[key] = (obj[key] * Number($("#svg").attr("width")) / 1000);
+		}
+		else if(key.charAt(0) === "y"){
+			obj[key] = (obj[key] * Number($("#svg").attr("height")) / 1000);
+		}
+	}
+	return obj;
 }
 
 function getRoomInfo(room1, room2){
