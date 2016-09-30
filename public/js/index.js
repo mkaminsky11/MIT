@@ -1,3 +1,12 @@
+$(document).ready(function(){
+	$("#search").click(function(e){
+		search();
+	});
+	$("#clear").click(function(e){
+		clear();
+	});
+});
+
 var floors = {
 	"62_0": {},
 	"62_2": {}
@@ -40,10 +49,6 @@ function loadFloorPlan(key){
 			$(svg).attr("height", $(canvas).height());
 			$(svg).attr("width", $(canvas).width());
 			svg.setAttribute("viewBox", "0 0 " + $(canvas).width() + " " + $(canvas).width() * ratio);
-
-			/*
-			height / width
-			*/
 
 			var renderContext = {
 			  canvasContext: context,
@@ -96,30 +101,14 @@ function search(){
 	  	info: info
 	  },
 	  success: function(data){
-	  	console.log(data);
 	  	if(!data.err){
-	  		/*for(var i = 0; i < data.path.length; i++){
-	  			var floorId = data.path[i].id.split("_").slice(0,2).join("_");
-	  			var svg = floors[floorId].svg;
-	  			data.path[i].data = denormalize(data.path[i].data,svg);
-	  			if(data.path[i].type === "line"){
-	  				createNode(data.path[i].data.x1, data.path[i].data.y1, "red", svg);
-	  				createNode(data.path[i].data.x2, data.path[i].data.y2, "red", svg);
-	  				createLine(data.path[i].data.x1, data.path[i].data.y1, data.path[i].data.x2, data.path[i].data.y2, "red", svg);
-	  			}
-	  			else if(data.path[i].type === "node"){
-	  				createNode(data.path[i].data.x, data.path[i].data.y, "red", svg);
-	  			}
-	  		}*/
 	  		var svg = floors[data.connected[0].building+"_"+data.connected[0].floor].svg;
 	  		data.connected[0] = denormalize(data.connected[0],svg);
 	  		createNode(data.connected[0].x,data.connected[0].y, "red", svg);
   			for(var i = 1; i < data.connected.length; i++){
   				var svg = floors[data.connected[i].building+"_"+data.connected[i].floor].svg;
-  				console.log(svg);
   				data.connected[i] = denormalize(data.connected[i],svg);
   				if(data.connected[i].x === data.connected[i-1].x && data.connected[i].y === data.connected[i-1].y){
-  					//same thing....
   				}
   				else{
   					createNode(data.connected[i].x,data.connected[i].y,"red",svg);

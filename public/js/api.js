@@ -78,7 +78,6 @@ function deleteObject(id){
 }
 
 function updateNode(id, name, node){
-	console.log(name,node);
 	$.ajax({
 	  type: "POST",
 	  url: "/update",

@@ -4,8 +4,9 @@ var nunjucks = require('nunjucks');
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var fs = require('fs');
-
 var mongoose = require('mongoose');
+var shortid = require('shortid');
+
 mongoose.connect('mongodb://localhost/MIT');
 
 app.use(express.static(__dirname + '/public'));
@@ -35,12 +36,17 @@ var pointSchema = mongoose.Schema({
     id: String
 });
 
+var junctionSchema = mongoose.Schema({
+	points: Array,
+	id: String,
+	type: String,
+	name: String
+});
+
 var point = mongoose.model('points', pointSchema);
-
-
+var junction = mongoose.model('junctions', junctionSchema);
 
 app.get('/', function (req, res) {
-	console.log("request");
   res.render('index.html', {
   	buildings: json.buildings
   });
@@ -62,7 +68,6 @@ app.get('/data/:building/:floor', function(req,res){
 });
 
 app.post('/new', function(req,res){
-	console.log("request");
 	var newPoint = new point({
 		id: req.params.id,
 		building: req.body.building,
@@ -72,33 +77,26 @@ app.post('/new', function(req,res){
 		data: req.body.data
 	});
 	newPoint.save(function(err,newObject){
-		res.send({
-			err: false
-		});
 		return;
 	});
 });
 
 app.post('/delete', function(req,res){
-	console.log("request");
 	point.remove({
 		floor: req.body.floor,
 		building: req.body.building,
 		id: req.body.id
 	}, function(err, removedObject){
-		res.send({
-			err: false
+		removeFromJunction(req,res,req.body.id,function(err,result){
 		});
-		return;
 	});
 });
 
 app.post('/update', function(req, res){
-	console.log("request");
 	point.find({
-			id: req.body.id,
-			floor: req.body.floor,
-			building: req.body.building	
+		id: req.body.id,
+		floor: req.body.floor,
+		building: req.body.building	
 	}, function(err, result){
 		if(result.length > 0){
 			var newData = clone(result[0].data);
@@ -114,10 +112,6 @@ app.post('/update', function(req, res){
 					data: newData
 				}
 			}, function(err, result){
-				res.send({
-					err: false
-				});
-				return;
 			});
 		}
 	});
@@ -125,7 +119,6 @@ app.post('/update', function(req, res){
 
 app.post('/path', function(req, res){
 	var info = req.body.info;
-
 	point.find({
 		building: info.build1,
 		floor: info.floor1,
@@ -151,6 +144,85 @@ app.post('/path', function(req, res){
 		});
 	});
 });
+
+app.get('/junctions/all', function(req,res){
+	junction.find({},function(err,result){
+		res.send(result);
+	});
+});
+
+app.post('/junctions/new', function(req,res){
+	var juncArray = [];
+	if(req.body.points){
+		juncArray = req.body.points;
+	}
+	var junc = new junction({
+		points: juncArray,
+		id: shortid.generate() + "-" + shortid.generate(),
+		type: req.body.type,
+		name: req.body.name
+	});
+	junc.save(function(err,result){
+	});
+});
+
+app.post('/junctions/delete', function(req,res){
+	removeFromJunction(req,res,req.body.id,function(err,result){
+	});
+})
+
+app.post('/junctions/update', function(req,res){
+	removeFromJunction(req,res,req.body.id,function(err,result){
+		addToJunction(req,res,req.body.id,req.body.junc,function(err,result){
+		});
+	});
+});
+
+function removeFromJunction(req,res,id,callback){
+	junction.find({},function(err,result){
+		for(var i = 0; i < result.length; i++){
+			var index = result[i].points.indexOf(id);
+			if(index !== -1){
+				result[i].points.splice(index,1);
+				junction.update({
+					id: result[i].id
+				},{
+					$set: {
+						points: result[i].points
+					}
+				}, function(err,result){
+				});
+			}
+		}
+		callback(err,result);
+	});	
+}
+
+function addToJunction(req,res,id,junc,callback){
+	junction.find({
+		id: junc
+	},function(err,result){
+		if(typeof result === typeof []){
+			result = result[0]
+		}
+		result.points.push(id);
+		junction.update({
+			id: junc
+		},{
+			$set: {
+				points: result.points
+			}
+		}, function(err,result){
+		});
+		callback(err,result);
+	});
+}
+
+/*
+new item, add to junction [done] /junctions/new
+new junction [done] /junctions/new
+new remove item from junctions [done] /junctions/delete
+*/
 
 app.listen(3000, function () {
 });
@@ -212,13 +284,11 @@ pathFinder.prototype.findPath = function(initial, unvisitedOnFloor, pathSoFar, c
 			nextConnected.push(connectedPath[j]);
 		}
 		var _connected = this.areConnected(initial, unvisitedOnFloor[i]);
-		console.log(_connected, initial.id, unvisitedOnFloor[i].id); //test b\w 62-003 and 62-002
 		nextConnected.push(_connected);
 		nextPath.push(unvisitedOnFloor[i]);
 
 		if(unvisitedOnFloor[i].id === this.finish.id){
 			if(_connected.connected === true){
-				console.log("send it!");
 				this.res.send({
 					data: "found it!",
 					path: nextPath,
@@ -286,7 +356,9 @@ pathFinder.prototype.areConnected = function(item1, item2){
 	var floor = item1.floor;
 	var building = item2.building;
 	if(item1.type === "node" && item2.type === "node"){
-		return false;
+		return {
+			connected: false
+		}
 	}
 	else if( (item1.type === "node" && item2.type === "line") || (item1.type === "line" && item2.type === "node") ){
 		if(item1.type === "line"){
@@ -363,11 +435,21 @@ pathFinder.prototype.areConnected = function(item1, item2){
 		var y_int = m1*x_int + b1;
 		y_int = two(y_int);
 
-		if(pointDistance(item1.x1,item1.y1,item2.x1,item2.y1) < minDist || pointDistance(item1.x1,item1.y1,item2.x2,item2.y2) < minDist || pointDistance(item1.x2,item1.y2,item2.x1,item2.y1) < minDist || pointDistance(item1.x2,item1.y2,item2.x2,item2.y2) < minDist){
+		if(pointDistance(item1.x1,item1.y1,item2.x1,item2.y1) < minDist || pointDistance(item1.x1,item1.y1,item2.x2,item2.y2) < minDist){
 			return {
 				connected: true,
-				x: x_int,
-				y: y_int,
+				x: item1.x1,
+				y: item1.y1,
+				floor: floor,
+				building: building
+			};
+		}
+
+		if(pointDistance(item1.x2,item1.y2,item2.x1,item2.y1) < minDist || pointDistance(item1.x2,item1.y2,item2.x2,item2.y2) < minDist){
+			return {
+				connected: true,
+				x: item1.x2,
+				y: item1.y2,
 				floor: floor,
 				building: building
 			};

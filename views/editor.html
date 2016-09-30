@@ -18,6 +18,10 @@
 		<button onclick="tool.node.start();tool.node.type='elevator';">elevator</button>
 		<button onclick="tool.eraser.start()"><i class="fa fa-eraser" aria-hidden="true"></i></button>
 		<button onclick="tool.line.start()"><i class="material-icons">timeline</i></button>
+		<button onclick="manageJunctions()">manage junctions</button>
+	</div>
+	<div id="junction-manager" style="display:none">
+
 	</div>
 	<div id="pdf-cont">
 		<canvas id="canvas"></canvas>
@@ -26,7 +30,15 @@
 			<input id="name" placeholder="Name">
 			<select id="type">
 				<option value="room" selected>Room</option>
+				<option value="stairs">Stairs</option>
+				<option value="elevator">Elevator</option>
+				<option value="switch">Switch</option>
 			</select>
+			<div id="junction-only" style="display:none">
+				<select id="junction-select">
+				</select>
+				<button onclick="manageJunctions()">MANAGE JUNCTIONS</button>
+			</div>
 			<button onclick="saveSelect()">SAVE</button>
 			<button onclick="closeSelect()">CLOSE</button>
 		</div>
@@ -45,5 +57,10 @@
 <script src="/pdf/build/pdf.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.4/d3.min.js"></script>
 <script src="/js/editor.js"></script>
+<script src="/js/tool.js"></script>
+<script src="/js/editorInterface.js"></script>
+<script src="/js/junctions.js"></script>
 <script src="/js/api.js"></script>
+<script src="/js/err.js"></script>
+<script src="/js/dialog.js"></script>
 {% endblock %}
