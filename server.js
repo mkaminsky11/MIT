@@ -248,6 +248,7 @@ function pathFinder(start, finish, res){
 	this.floor = start.floor;
 	this.foundPaths = [];
 	this.res = res;
+	this.found = false;
 };
 
 pathFinder.prototype.startFindPath = function(){
@@ -284,32 +285,112 @@ pathFinder.prototype.findPath = function(initial, unvisitedOnFloor, pathSoFar, c
 			nextConnected.push(connectedPath[j]);
 		}
 		var _connected = this.areConnected(initial, unvisitedOnFloor[i]);
-		nextConnected.push(_connected);
-		nextPath.push(unvisitedOnFloor[i]);
+		if(_connected.connected !== false){
+			nextConnected.push(_connected);
+			nextPath.push(unvisitedOnFloor[i]);
 
-		if(unvisitedOnFloor[i].id === this.finish.id){
-			if(_connected.connected === true){
-				this.res.send({
-					data: "found it!",
-					path: nextPath,
-					connected: nextConnected
-				});
-				return;
+			var unvisitedItem = unvisitedOnFloor[i];
+			var isJunction = false;
+			if(unvisitedItem.type === "node" && (unvisitedItem.data.node === "switch" || unvisitedItem.data.node === "stairs" || unvisitedItem.data.node === "elevator")){
+				isJunction = true;
 			}
-		}
-
-		var unvisitedNow = [];
-		for(var j = 0; j < unvisitedOnFloor.length; j++){
-			if(j !== i){
-				unvisitedNow.push(unvisitedOnFloor[j]);
+			if(unvisitedOnFloor[i].id === this.finish.id){
+				if(this.found === false){
+					console.log(nextConnected);
+					this.found = true;
+					this.res.send({
+						data: "found it!",
+						path: nextPath,
+						connected: nextConnected
+					});
+					return;
+				}
 			}
-		}
 
-		if(unvisitedOnFloor[i].type === "line" && _connected.connected === true){
-			//check if connected to the current thing
-			this.findPath(unvisitedOnFloor[i], unvisitedNow, nextPath, nextConnected);
+			var unvisitedNow = [];
+			for(var j = 0; j < unvisitedOnFloor.length; j++){
+				if(j !== i){
+					unvisitedNow.push(unvisitedOnFloor[j]);
+				}
+			}
+
+			if(unvisitedOnFloor[i].type === "line" && _connected.connected === true){
+				//check if connected to the current thing
+				this.findPath(unvisitedOnFloor[i], unvisitedNow, nextPath, nextConnected);
+			}
+			else if(isJunction === true){
+				this.findJunctionPath(unvisitedOnFloor[i], unvisitedNow, nextPath, nextConnected);
+			}
 		}
 	}
+}
+
+pathFinder.prototype.findJunctionPath = function(initial, unvisitedOnFloor, pathSoFar, connectedPath){
+	//find the junctions this is connected to [DONE]
+		//for each of the points which are not in pathSoFar... [DONE]
+			//add to new pathsofar [DONE]
+			//add to new connection [DONE?]
+			//make new unvisited on floor [DONE]
+			//get new initial [DONE]
+			//check if it is the finish [DONE]
+			//findPath
+	var $this = this;
+	junction.find({}, function(err,res1){
+		for(var i = 0; i < res1.length; i++){
+			var points = res1[i].points;
+			if(points.indexOf(initial.id) !== -1){ // FOUND THE JUNCTION
+				for(var j = 0; j < points.length; j++){ // FOR EACH OF THE OTHER POINTS WHICH HAVE ALSO NOT BEEN VISITED
+					if(points[j] !== initial.id && pathSoFar.indexOf(points[j]) === -1){
+						point.find({
+							id: points[j]
+						},function(err,result){
+							//get the item, this will be the new initial
+							var item = result;
+							if(typeof result === typeof []){
+								item = result[0];
+							}
+
+							var nextPath = [];
+							for(var a = 0; a < pathSoFar.length; a++){
+								nextPath.push(pathSoFar[a]);
+							}
+							nextPath.push(item);
+							var nextConnected = [];
+							for(var a = 0; a < connectedPath.length; a++){
+								nextConnected.push(connectedPath[a]);
+							}
+
+							if(item.id === $this.finish.id && $this.found === false){
+								$this.found = true;
+								console.log(nextConnected);
+								$this.res.send({
+									data: "found it!",
+									path: nextPath,
+									connected: nextConnected
+								});
+								return;
+							}
+							//ADD CONNECTED? TODO
+							point.find({
+								floor: item.floor,
+								building: item.building
+							},function(err,result1){
+								var newUnvisited = [];
+								for(var a = 0; a < result1.length; a++){
+									if(result1[a].id !== item.id && pathSoFar.indexOf(result1[a].id) === -1){
+										newUnvisited.push(result1[a]);
+									}
+								}
+								console.log(newUnvisited);
+								$this.findPath(item,newUnvisited,nextPath,nextConnected);
+							});
+						});
+					}
+				}
+			}
+		}
+	});
+
 }
 
 function lineDistance(x1,y1,x2,y2,x0,y0){
@@ -353,8 +434,13 @@ function pointDistance(x1,y1,x2,y2){
 var minDist = 1;
 
 pathFinder.prototype.areConnected = function(item1, item2){
+	if(item1.floor !== item2.floor || item1.building !== item2.building){
+		return {
+			connected: false
+		}
+	}
 	var floor = item1.floor;
-	var building = item2.building;
+	var building = item1.building;
 	if(item1.type === "node" && item2.type === "node"){
 		return {
 			connected: false

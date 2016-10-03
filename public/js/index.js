@@ -101,20 +101,29 @@ function search(){
 	  	info: info
 	  },
 	  success: function(data){
+	  	console.log(data);
 	  	if(!data.err){
 	  		var svg = floors[data.connected[0].building+"_"+data.connected[0].floor].svg;
 	  		data.connected[0] = denormalize(data.connected[0],svg);
 	  		createNode(data.connected[0].x,data.connected[0].y, "red", svg);
   			for(var i = 1; i < data.connected.length; i++){
-  				var svg = floors[data.connected[i].building+"_"+data.connected[i].floor].svg;
-  				data.connected[i] = denormalize(data.connected[i],svg);
-  				if(data.connected[i].x === data.connected[i-1].x && data.connected[i].y === data.connected[i-1].y){
-  				}
-  				else{
-  					createNode(data.connected[i].x,data.connected[i].y,"red",svg);
-  					createNode(data.connected[i-1].x,data.connected[i-1].y,"red",svg);
-  					createLine(data.connected[i-1].x,data.connected[i-1].y, data.connected[i].x, data.connected[i].y, "red", svg);
-  				}
+  				if(data.connected[i].connected === true){
+	  				var svg = floors[data.connected[i].building+"_"+data.connected[i].floor].svg;
+	  				data.connected[i] = denormalize(data.connected[i],svg);
+
+	  				if(data.connected[i].x === data.connected[i-1].x && data.connected[i].y === data.connected[i-1].y){
+	  				}
+	  				else{
+	  					if(data.connected[i].floor !== data.connected[i-1].floor || data.connected[i].building !== data.connected[i-1].building){
+	  						createNode(data.connected[i].x,data.connected[i].y,"red",svg);
+	  					}
+	  					else{
+		  					createNode(data.connected[i].x,data.connected[i].y,"red",svg);
+		  					createNode(data.connected[i-1].x,data.connected[i-1].y,"red",svg);
+		  					createLine(data.connected[i-1].x,data.connected[i-1].y, data.connected[i].x, data.connected[i].y, "red", svg);
+		  				}
+	  				}
+	  			}
   			}
 	  	}
 	  },
